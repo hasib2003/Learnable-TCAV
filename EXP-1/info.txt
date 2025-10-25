@@ -1,0 +1,7 @@
+for training on simple binary classifier between cat and dogs.
+    Cats class has poluted images with text label  (CAT)
+    Dogs images are kept intact
+
+trained model will be tested, to see if there it has captured (LABEL-concept) for cat or not
+
+it is done using captum

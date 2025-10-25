@@ -1,0 +1,12 @@
+srun -K -p H200,H100,H200-SDS,RTXA6000,RTXA6000-SDS,batch,A100-80GB,A100-40GB,RTX3090,A100-IML \
+    --gpu-bind=none \
+    --time=04:00:00 \
+    --immediate=3600 \
+    --ntasks=1 \
+    --gpus-per-task=1\
+    --cpus-per-task=8 \
+    --mem=512GB \
+    --container-image=/enroot/nvcr.io_nvidia_pytorch_25.02-py3.sqsh  \
+    --container-mounts=/netscratch:/netscratch,/ds:/ds,/fscratch:/fscratch,/home/aslam:/home/aslam"`pwd`":"`pwd`" \
+    --container-workdir="`pwd`"  \
+    --pty /bin/bash
