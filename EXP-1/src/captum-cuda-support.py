@@ -55,6 +55,7 @@ def run_instance(classifier="default"):
 
     clf     = None
     DEVICE  = "cpu"
+    # DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
 
     if classifier == "custom":
     

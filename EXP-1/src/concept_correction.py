@@ -3,8 +3,6 @@ import os
 import sys
 
 import numpy as np
-from scipy.stats import ttest_ind
-
 # ..........torch imports............
 import torch
 import torch.optim as optim
@@ -22,6 +20,7 @@ if parent_parent not in sys.path:
     sys.path.insert(0, parent_parent)
 
 from utils.captum import transform, load_image_tensors, assemble_concept, get_pval,assemble_scores,format_float
+from src.Classifier.svm import CuMLSVMClassifier
 
 
 CONCEPTS_DIR = "/netscratch/aslam/TCAV/PetImages/Concepts/"
@@ -77,9 +76,11 @@ def get_concept_significance(model:torch.nn.Module,layers:list[str],concept_name
      
     experimental_sets = [[target_concept, random_concept] for random_concept in random_concepts]
 
+    clf = None
 
     mytcav = TCAV(model=model,
                 layers=layers,
+                classifier=clf,
                 layer_attr_method = LayerIntegratedGradients(
                 model, None, multiply_by_inputs=False))
 
@@ -131,14 +132,17 @@ def eval_concept_significance(model:torch.nn.Module,layers:list[str],concept_nam
 
     random_concepts = [assemble_concept('random_' + str(i+0), (i+1)) for i in range(0, num_rand_concepts)]
 
-    model.train()
+    model.eval()
     model = model.to(device)
 
     experimental_sets = []
     experimental_sets.extend([[target_concept, random_concept] for random_concept in random_concepts])
 
+    clf = None
+
     tcav_obj= TCAV(model=model,
             layers=layers,
+            classifier=clf,
             layer_attr_method = LayerIntegratedGradients(
             model, None, multiply_by_inputs=False) )
 
@@ -267,8 +271,6 @@ def train_correction_epoch(model:torch.nn.Module,layers:list[str],concept_name:s
 
 def generate_concept_alignment_report(model,device,save_path):
 
-
-    assert device == "cpu", f"Concept evaluation without cpu is buggy"        
 
 
     concepts = ["CAT","CAT-TEXT","DOG","DOG-TEXT"]

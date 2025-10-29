@@ -24,7 +24,8 @@ from utils.models import load_from_checkpoint , get_model
 from src.concept_correction import generate_concept_alignment_report,get_concept_significance
 
 def test(model, loader, criterion, device,return_preds=False):
-    model.train()
+    
+    model.eval()
     total_loss = 0
     correct = 0
     total = 0
@@ -55,9 +56,9 @@ def test(model, loader, criterion, device,return_preds=False):
 
 
 
-def evaluate_concepts(model,dataset_path):
+def evaluate_concepts(model,dataset_path,device):
 
-    device = "cpu"
+    # device = "cpu"
 
     activation_layer = "avgpool"
 
@@ -74,7 +75,7 @@ def evaluate_concepts(model,dataset_path):
     ]
     
     
-    model.train()
+    model.eval()
 
 
     
@@ -147,13 +148,11 @@ def main():
                            shuffle=False, num_workers=args.num_workers)
 
     test_loss, test_acc,all_labels,all_preds = test(model, test_loader, criterion, device,return_preds=True)
-    concept_reports = generate_concept_alignment_report(model,device="cpu",save_path=base_dir)
-    concept_maginitudes  = evaluate_concepts(model,args.dataset_dir)
-
-
-
 
     print(f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}%")
+    
+    concept_reports = generate_concept_alignment_report(model,device=device,save_path=base_dir)
+    concept_maginitudes  = evaluate_concepts(model,args.dataset_dir,device)
     
     class_names = test_dataset.classes  
 

@@ -63,11 +63,7 @@ def optimizer_to(optim, device):
                 param[k] = v.to(device)
 
 
-def train_epoch_with_concept(model, loader, criterion, optimizer, device,alpha=0.3,patience=30):
-
-    original_device = device
-
-    device = "cpu"
+def train_epoch_with_concept(epoch,model, train_loader, test_loader, criterion, optimizer, device,alpha=0.5,patience=30):
 
     activation_layer = "avgpool"
 
@@ -99,16 +95,11 @@ def train_epoch_with_concept(model, loader, criterion, optimizer, device,alpha=0
 
     triggers = 0
 
-
         
     model = model.to(device)
-    optimizer_to(optimizer, "cpu")
-
-
-
+    optimizer_to(optimizer, device)
     
-    tq = tqdm(loader, desc="Training")
-
+    tq = tqdm(train_loader, desc="Training")
     
     for batch_idx,(images, labels) in enumerate(tq):
 
@@ -124,13 +115,12 @@ def train_epoch_with_concept(model, loader, criterion, optimizer, device,alpha=0
 
         for concept in target_concepts:
 
-
-
             mean_align_val = get_concept_significance(model=model, layers=[activation_layer], concept_name=concept["name"],class_idx=concept["idx"],eval_images_path=concept["eval_dir_path"],device=device)
 
+            key = f'{concept["name"]}_{concept["idx"]}'
 
-            concept_losses[concept["name"]] = {}
-            concept_losses[concept["name"]]["raw"] = mean_align_val.cpu().item().__round__(3)
+            concept_losses[key] = {}
+            concept_losses[key]["raw"] = mean_align_val.cpu().item().__round__(3)
 
                         
             if (concept["desired"] and mean_align_val < 0) or (not concept["desired"] and mean_align_val > 0):
@@ -142,8 +132,8 @@ def train_epoch_with_concept(model, loader, criterion, optimizer, device,alpha=0
 
                 c_losses.append(c_loss)
                 # loss = ((1 - alpha) * loss) + (alpha * c_loss)
-                concept_losses[concept["name"]]["loss"] = c_loss.cpu().item().__round__(3)
-                concept_losses[concept["name"]]["desired"] = concept["desired"]
+                concept_losses[key]["loss"] = c_loss.cpu().item().__round__(3)
+                concept_losses[key]["desired"] = concept["desired"]
         
 
         total_c_loss = sum(c_losses)
@@ -158,19 +148,61 @@ def train_epoch_with_concept(model, loader, criterion, optimizer, device,alpha=0
 
 
         
-        print("Concept Losses ", concept_losses)
-        loss = (1-alpha) * loss + alpha * total_c_loss
+
+        if total_c_loss > 1e-4:
+            loss = (1-alpha) * loss + alpha * total_c_loss
+            print("\nConcept Losses ", concept_losses)
+            print(f"{total_c_loss=}")
+
+            
 
         loss.backward()
         optimizer.step()
         
         total_loss += loss.item()
         _, predicted = outputs.max(1)
-        total += labels.size(0)
-        correct += predicted.eq(labels).sum().item()
 
-    model = model.to(original_device)
-    optimizer_to(optimizer, original_device)
+        b_size = labels.size(0)
+        b_corr = predicted.eq(labels).sum().item()
+        total += b_size
+        correct += b_corr
+
+        tq.set_postfix_str(f"Acc: {b_corr/b_size:.4f}   loss: {loss.cpu().item():.4f}")
+
+        if batch_idx % 30 == 0:
+            test_loss, test_acc = test(model,test_loader,criterion,device)
+            print(f"{test_acc=} {test_loss=}")
+
+
+            # saving the latest model weights
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'test_acc': test_acc,
+                'test_loss': test_loss,
+            }, last_checkpoint_path)
+            
+            # Save best model
+            global best_test_acc
+
+            if test_acc > best_test_acc:
+                
+                best_test_acc = test_acc
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'test_acc': test_acc,
+                    'test_loss': test_loss,
+
+                }, best_checkpoint_path)
+                print(f"Saved best model (Best  Acc: {test_acc:.2f}%)")
+        
+
+
+
+
 
     return total_loss / (batch_idx+1), 100. * correct / total
 
@@ -239,7 +271,7 @@ def train_n_batch_alignment(model, loader, criterion, optimizer, device,alpha=0.
                 concept_losses[concept["name"]]["loss"] = c_loss.cpu().item().__round__(3)
                 concept_losses[concept["name"]]["desired"] = concept["desired"]
         
-        print("Concept Losses ", concept_losses)
+        print("\nConcept Losses ", concept_losses)
 
         loss = sum(c_losses)/len(c_losses)
 
@@ -253,92 +285,6 @@ def train_n_batch_alignment(model, loader, criterion, optimizer, device,alpha=0.
     model = model.to(original_device)
 
     return total_loss / n, -1
-
-
-
-def concept_aligment(model,optimizer, device):
-
-    device = "cpu"
-    activation_layer = "avgpool"
-    concept_loss = ConceptLoss()
-
-    target_concepts = [        
-        
-        {"eval_dir_path":os.path.join(args.train_dir,"Cat"),"name":"CAT","idx":0,"desired":True},
-        
-        {"eval_dir_path":os.path.join(args.train_dir,"Cat"),"name":"CAT-TEXT","idx":0,"desired":False},
-        
-        {"eval_dir_path":os.path.join(args.train_dir,"Dog"),"name":"DOG","idx":1,"desired":True},
-        
-        {"eval_dir_path":os.path.join(args.train_dir,"Dog"),"name":"DOG-TEXT","idx":1,"desired":False}
-    ]
-    
-    model.train()
-    # freeze_until(model,activation_layer)
-
-
-    original_lrs = [param_group['lr'] for param_group in optimizer.param_groups]
-    
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = 0.001 
-    
-    tq = tqdm(target_concepts, desc="Training Concepts")
-    
-
-    concept_losses = []
-
-    loss = None
-
-    for concept in tq:
-
-
-
-        mean_align_val = get_concept_significance(model=model, layers=[activation_layer], concept_name=concept["name"],class_idx=concept["idx"],eval_images_path=concept["eval_dir_path"],device=device)
-
-
-        storage_dict = {}
-        storage_dict["name"] = concept["name"]
-        storage_dict["raw"] = mean_align_val.cpu().item().__round__(3)
-
-                    
-        if (concept["desired"] and mean_align_val < 0) or (not concept["desired"] and mean_align_val > 0):
-            # there is some loss 
-            
-            # print("mean_align_val ",mean_align_val)
-            c_loss = concept_loss(mean_align_val,concept["desired"])
-            # print(f"{c_loss=}")
-            # 
-            if loss:
-                loss += c_loss  
-            else:
-                loss = c_loss      
-
-
-            storage_dict["loss"] = c_loss.cpu().item().__round__(3)
-            storage_dict["desired"] = concept["desired"]
-
-            concept_losses.append(storage_dict)
-    
-
-        if loss:
-            loss.backward()
-            optimizer.step()
-        
-
-    for concept_loss in concept_losses:
-
-        print(concept_loss)
-
-
-    # reset the model's parameter's to trainables
-    for _, child in model.named_children():
-        for param in child.parameters():
-            param.requires_grad = True
-
-    for param_group, lr in zip(optimizer.param_groups, original_lrs):
-        param_group['lr'] = lr
-    
-    return loss
 
 def main():
     # Argument parser
@@ -354,9 +300,11 @@ def main():
 
     parser.add_argument('--num_workers', type=int, default=4, help='Number of data loading workers')
     
-    parser.add_argument('--train_strategy', type=str, default="joint_optimization", 
-    choices=['joint_optimization', 'n_batch_alignment','none'],
-    help='joint_optimization || n_batch_alignment')
+    parser.add_argument('--train_strategy', type=str, default="joint_optimization",choices=['joint_optimization', 'n_batch_alignment','none'])
+    parser.add_argument('--target_layer', type=str, default="avgpool",choices=['avgpool'])
+
+
+
 
     parser.add_argument('--n', type=int, default=10, help='no of batches to align for, required only if strategy is n_batch_alignment')
 
@@ -390,12 +338,10 @@ def main():
     # Train/test split
     train_size = int(args.train_split * len(full_dataset))
     val_size = len(full_dataset) - train_size
-    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+    train_dataset, _ = random_split(full_dataset, [train_size, val_size])
     
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, 
                             shuffle=True, num_workers=args.num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, 
-                           shuffle=False, num_workers=args.num_workers)
 
 
     test_dataset = datasets.ImageFolder(args.test_dir, transform=transform)
@@ -406,16 +352,20 @@ def main():
     
     # Model, loss, optimizer
     model = get_model("resnet18",num_classes)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
     if args.resume_checkpoint and os.path.isfile(args.resume_checkpoint):
+        
+        chkpnt = torch.load(args.resume_checkpoint,map_location=device)
 
-        model = load_from_checkpoint(model,path=args.resume_checkpoint,device=device)
+        model.load_state_dict(chkpnt["model_state_dict"])
+        optimizer.load_state_dict(chkpnt["optimizer_state_dict"])
 
-        print(f"Loaded model weights from {args.resume_checkpoint}")
+
+        print(f"Loaded model/optim weights from {args.resume_checkpoint}")
 
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
     
     # Create checkpoint directory
     os.makedirs(args.checkpoint_dir, exist_ok=True)
@@ -434,9 +384,13 @@ def main():
 
     
     # Training loop
+
+    global best_checkpoint_path,last_checkpoint_path, best_test_acc
+    
+    
     best_test_acc = 0.0
-    last_checkpoint_path = os.path.join(checkpoint_dir, "last_model.pth")
     best_checkpoint_path = os.path.join(checkpoint_dir, "best_model.pth")
+    last_checkpoint_path = os.path.join(checkpoint_dir, "last_model.pth")
 
 
   
@@ -446,7 +400,7 @@ def main():
         if (epoch+1) % args.c_corr_after == 0:            
     
             if args.train_strategy == "joint_optimization":
-                train_loss,train_acc = train_epoch_with_concept(model, train_loader, criterion, optimizer, device)
+                train_loss,train_acc = train_epoch_with_concept(epoch,model, train_loader,test_loader, criterion, optimizer, device)
 
             elif args.train_strategy == "n_batch_alignment":
                 train_loss,train_acc = train_n_batch_alignment(model, train_loader, criterion, optimizer, device,n=args.n)
@@ -458,11 +412,11 @@ def main():
         else:
             train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
         
-        val_loss, val_acc = test(model, val_loader, criterion, device)
+        #val_loss, val_acc = test(model, val_loader, criterion, device)
         test_loss, test_acc = test(model, test_loader, criterion, device)
 
         print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%")
-        print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%")
+        #print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.2f}%")
         print(f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}%")
 
 
@@ -472,12 +426,9 @@ def main():
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'val_acc': val_acc,
-            'val_loss': val_loss,
             'test_acc': test_acc,
             'test_loss': test_loss,
         }, last_checkpoint_path)
-
         
         # Save best model
         if test_acc > best_test_acc:
@@ -486,13 +437,13 @@ def main():
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                'val_acc': val_acc,
-                'val_loss': val_loss,
+                #'val_acc': val_acc,
+                #'val_loss': val_loss,
                 'test_acc': test_acc,
                 'test_loss': test_loss,
 
             }, best_checkpoint_path)
-            print(f"Saved best model (Val Acc: {val_acc:.2f}%)")
+            print(f"Saved best model (Best  Acc: {test_acc:.2f}%)")
     
     print(f"\nTraining complete! Best test accuracy: {best_test_acc:.2f}%")
     
@@ -500,12 +451,12 @@ def main():
     print(f"loading best model ...")
 
     
-    model = load_from_checkpoint(model,path=last_checkpoint_path,device=device)
+    model = load_from_checkpoint(model,path=best_checkpoint_path,device=device)
 
 
 
     test_loss, test_acc,all_labels,all_preds = test(model, test_loader, criterion, device,return_preds=True)
-    print(f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}%", flush=True)
+    # print(f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}%", flush=True)
 
     
     class_names = test_dataset.classes   # <-- critical
@@ -515,12 +466,12 @@ def main():
     # 1. Compute confusion matrix
     cm = confusion_matrix(all_labels, all_preds)
     cm_list = cm.tolist()  # JSON needs a serializable format
-    concepts_report = generate_concept_alignment_report(model,device="cpu",save_path=checkpoint_dir)
+    concepts_report = generate_concept_alignment_report(model,device=device,save_path=checkpoint_dir)
 
     # 2. Save metrics to JSON
     result_dict = {
         "train_acc": train_acc,
-        "val_acc": val_acc,
+        # "val_acc": val_acc,
         "test_acc": test_acc,
         "confusion_matrix": cm_list,
         "class_names": class_names,
@@ -557,4 +508,9 @@ def main():
 
 
 if __name__ == "__main__":
+
+    import warnings
+    
+    warnings.filterwarnings("ignore", category=UserWarning)
+    
     main()
