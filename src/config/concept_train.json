@@ -1,0 +1,6 @@
+[
+        {"eval_dir_path": "/netscratch/aslam/TCAV/PetImages/train/with-cat-text/Cat", "name": "CAT", "idx": 0, "desired": true},
+        {"eval_dir_path": "/netscratch/aslam/TCAV/PetImages/train/with-cat-text/Cat", "name": "CAT-TEXT", "idx": 0, "desired": false},
+        {"eval_dir_path": "/netscratch/aslam/TCAV/PetImages/train/with-cat-text/Dog", "name": "CAT-TEXT", "idx": 1, "desired": false},
+        {"eval_dir_path": "/netscratch/aslam/TCAV/PetImages/train/with-cat-text/Dog", "name": "DOG", "idx": 1, "desired": false}
+]

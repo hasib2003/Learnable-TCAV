@@ -1,23 +1,28 @@
 #!/bin/bash
 
-
-pip install -r requirements.txt
-# pip install captum
-
-cd /home/aslam/TCAV/EXP-2/captum
+pip install -r /home/aslam/TCAV-refact/requirements.txt
+cd /home/aslam/TCAV-refact/src/captum
 pip install .
-# pip install -e .[dev]
+cd /home/aslam/TCAV-refact/src
 
 
+clear
+echo ... requirements installed successfully ...
+echo ... starting script ...
 
-python /home/aslam/TCAV/EXP-1/src/train-with-concepts.py \
+python -m pipelines.train-with-concepts \
   --train_dir /netscratch/aslam/TCAV/PetImages/train/with-cat-text \
-  --test_dir /netscratch/aslam/TCAV/PetImages/test \
+  --test_dir  /netscratch/aslam/TCAV/PetImages/test \
+  --concepts_dir /netscratch/aslam/TCAV/PetImages/Concepts/ \
+  --model resnet18 \
+  --concept_config_train config/concept_test.json  \
+  --concept_config_test  config/concept_train.json \
+  --classifier default \
+  --train_activation_layers avgpool \
+  --test_activation_layers layer4.1.relu avgpool \
   --batch_size 64 \
   --epochs 4 \
   --lr 0.0001 \
-  --train_split 0.80 \
-  --checkpoint_dir /netscratch/aslam/TCAV/text-inflation/EXP1/with-text/with-concept-loss \
+  --checkpoint_dir /netscratch/aslam/TCAV/text-inflation/recreation-test/with-concept-loss \
   --num_workers 8 \
-  --c_corr_after 1 \
-  --resume_checkpoint /netscratch/aslam/TCAV/text-inflation/EXP1/with-text/with-concept-loss/20251024_223201/last_model.pth
+  --correction_frequency 2

@@ -1,25 +1,36 @@
-import os
-from PIL import Image
 
+import os
+import numpy as np
 # ..........torch imports............
+import torch
 from torchvision import transforms
 
 #.... Captum imports..................
 from captum.concept import Concept
 from captum.concept._utils.data_iterator import dataset_to_dataloader, CustomIterableDataset
+from captum.attr import  LayerIntegratedGradients
+from captum.concept import TCAV
+
+#.... Custom imports..................
+from classifier.svm import CuMLSVMClassifier
 
 
+from PIL import Image
 
+# ..........torch imports............
 import numpy as np
 from scipy.stats import ttest_ind
 
-CONCEPTS_DIR = "/netscratch/aslam/TCAV/PetImages/Concepts/"
-CHECKPOINT_PATH="/netscratch/aslam/TCAV/text-inflation/EXP1/20251001_204742/best_model.pth"
 
-DUMP_PATH= os.path.join(os.path.dirname(CHECKPOINT_PATH),"cav-testing")
-os.makedirs(DUMP_PATH,exist_ok=True)
+SUPPORTED_LAYERS = [
+    "layer2.1.relu",   # deeper conv in layer2
+    "layer3.1.relu",   # deeper conv in layer3
+    "layer4.1.relu",    # deeper conv in layer4
+    "layer4.1.bn2",    # deeper conv in layer4
+    "avgpool",    # deeper conv in layer4
+]
 
-# Method to normalize an image to Imagenet mean and standard deviation
+
 
 def transform(img):
 
@@ -58,7 +69,7 @@ def load_image_tensors(path:str, transform=True,max_files=50):
     
     return tensors
 
-def assemble_concept(name, id, concepts_path=CONCEPTS_DIR):
+def assemble_concept(name, id, concepts_path):
     concept_path = os.path.join(concepts_path, name) + "/"
     dataset = CustomIterableDataset(get_tensor_from_filename, concept_path)
     concept_iter = dataset_to_dataloader(dataset)
@@ -103,3 +114,103 @@ def get_pval(scores, experimental_sets, score_layer, score_type, alpha=0.05, pri
     return P1, P2, format_float(pval), relation
 
 
+
+
+
+
+
+
+
+
+
+
+
+def get_classifier(classifier:str):
+    
+    if classifier == "cumlsvm":
+        return CuMLSVMClassifier()
+    if classifier == "default":
+        return None
+
+    raise ValueError(f"Invalid classifier value {classifier} passed")
+    
+
+
+def get_concept_significance(model:torch.nn.Module,
+                             layers:list[str],
+                             classifier:str | None,
+                             concepts_dir:str,
+                             concept_name:str,
+                             class_idx:int,
+                             eval_images_path:str,
+                             trainable:bool,
+                             score_type:str,
+                             device:str,
+                             num_rand_concepts:int=10,
+                             alpha:float=0.05
+                             ):
+    
+    """
+    used to check if the concept is significantly present in the model  or not for specified class
+
+    returns:
+    
+    alignment : aggregated directional derivative score
+    statistics bool :  true if it is statistically significant other wise false
+    
+    """
+
+
+    assert all(l_name in SUPPORTED_LAYERS for l_name in layers), f"Expected all layers to be in {SUPPORTED_LAYERS}"
+    assert concept_name in os.listdir(concepts_dir) , f"Expected concepts to be in {os.listdir(concepts_dir)}"
+    assert score_type in ["magnitude","sign_count"]
+
+    assert trainable and score_type != "sign_count"
+
+
+
+
+    if len(layers) > 1 and not trainable:
+        raise ValueError("LCAV with more than one layer is not yet supported")
+
+    
+
+    target_concept = assemble_concept(concept_name, 0, concepts_path=concepts_dir)
+    eval_images = load_image_tensors(path=eval_images_path, transform=False)
+    eval_tensors = torch.stack([transform(img) for img in eval_images])
+
+    model = model.to(device)
+    eval_tensors = eval_tensors.to(device)
+
+    assert next(model.parameters()).device == eval_tensors.device, "Model and tensors on different devices!"
+
+
+
+    random_concepts = [assemble_concept('random_' + str(i+0), (i+2),concepts_path=concepts_dir) for i in range(0, num_rand_concepts)] 
+    experimental_sets = [[target_concept, random_concept] for random_concept in random_concepts]
+
+    clf = None
+    if classifier is not None:
+        clf = get_classifier(classifier)
+
+    mytcav = TCAV(model=model,
+                layers=layers,
+                classifier=clf,
+                layer_attr_method = LayerIntegratedGradients(
+                model, None, multiply_by_inputs=False))
+
+    mytcav.compute_cavs(experimental_sets, force_train=True)
+    scores = mytcav.interpret(eval_tensors, experimental_sets, class_idx, n_steps=5,grad_kwargs={"create_graph": trainable, "retain_graph": trainable})
+
+    if trainable:
+
+        assembled_scores = assemble_scores(scores,experimental_sets,0,score_layer=layers[-1],score_type=score_type)
+        return torch.stack(assembled_scores).mean()
+
+    results = {}
+    for layer in layers:
+
+        P1, P2, pval, _ = get_pval(scores, experimental_sets, layer, score_type=score_type , alpha=alpha, print_ret=False)
+        results[layer] = {"concept":float(np.mean([t.cpu().item() for t in P1])),"random":float(np.mean([t.cpu().item() for t in P2])),"pval":pval}
+
+    return results
