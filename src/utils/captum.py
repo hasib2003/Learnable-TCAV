@@ -113,18 +113,6 @@ def get_pval(scores, experimental_sets, score_layer, score_type, alpha=0.05, pri
         
     return P1, P2, format_float(pval), relation
 
-
-
-
-
-
-
-
-
-
-
-
-
 def get_classifier(classifier:str):
     
     if classifier == "cumlsvm":
@@ -134,8 +122,6 @@ def get_classifier(classifier:str):
 
     raise ValueError(f"Invalid classifier value {classifier} passed")
     
-
-
 def get_concept_significance(model:torch.nn.Module,
                              layers:list[str],
                              classifier:str | None,
@@ -165,7 +151,7 @@ def get_concept_significance(model:torch.nn.Module,
     assert concept_name in os.listdir(concepts_dir) , f"Expected concepts to be in {os.listdir(concepts_dir)}"
     assert score_type in ["magnitude","sign_count"]
 
-    assert trainable and score_type != "sign_count"
+    assert not trainable or (trainable and score_type != "sign_count")
 
 
 
@@ -214,3 +200,89 @@ def get_concept_significance(model:torch.nn.Module,
         results[layer] = {"concept":float(np.mean([t.cpu().item() for t in P1])),"random":float(np.mean([t.cpu().item() for t in P2])),"pval":pval}
 
     return results
+
+def get_CAV(model:torch.nn.Module,
+            classifier:str | None,
+            concepts_dir:str,
+            concept_name:str,
+            device:str,
+            num_rand_concepts:int=10,
+            layer="avgpool"
+            ):
+    
+    """
+    computes the CAV
+
+    input:
+
+        model               : model,
+        concept_name        : name of the concept (for which a dir must exists in CONCEPTS_DIR)
+        device              : model's device
+        num_rand_concepts   : number of experiments to be conducted (each with different random dir)
+    
+    returns:
+
+        cavs            : list of CAVs (one for each experiment)
+    
+    """
+
+
+    assert layer in SUPPORTED_LAYERS, f"Expected layer to be in {SUPPORTED_LAYERS}"
+    assert concept_name in os.listdir(concepts_dir) , f"Expected concepts to be in {os.listdir(concepts_dir)}"
+
+    
+
+    target_concept = assemble_concept(concept_name, 0, concepts_path=concepts_dir)
+    model = model.to(device)
+
+
+
+
+    random_concepts = [assemble_concept('random_' + str(i+0), (i+2),concepts_path=concepts_dir) for i in range(0, num_rand_concepts)] 
+    experimental_sets = [[target_concept, random_concept] for random_concept in random_concepts]
+
+    clf = None
+    if classifier is not None:
+        clf = get_classifier(classifier)
+
+
+    model.eval()
+    with torch.no_grad():
+        mytcav = TCAV(model=model,
+                    layers=[layer],
+                    classifier=clf,
+                    layer_attr_method = LayerIntegratedGradients(
+                    model, None, multiply_by_inputs=False))
+
+    cavs = mytcav.compute_cavs(experimental_sets, force_train=True)
+
+    list_weights = []
+
+    for _, cav_obj in cavs.items():
+
+
+        list_weights.append(cav_obj[layer].stats["weights"][0])
+
+
+    return torch.stack(list_weights)
+
+
+
+# if __name__ == "__main__":
+
+#     from utils.models import get_model
+
+#     model = get_model("resnet18",2,True)
+
+#     cavs = get_CAV(model,None,"/netscratch/aslam/TCAV/PetImages/Concepts/","CAT-TEXT","cuda")
+
+#     print("cavs ",cavs)
+#     print("cavs.shape ",cavs.shape)
+
+#     sim = cavs @ cavs.T
+
+#     print(f"{sim=}")
+
+#     print("mean cav ",torch.mean(cavs,dim=0).shape)
+
+#     # print("cavs @ cavs")

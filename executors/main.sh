@@ -9,9 +9,9 @@ fi
 JOB_NAME="$1"
 FILE_PATH="$2"
 GPUS="${3:-0}"
-MEMORY="${4:-64}"  # Default to 128GB if not provided
+MEMORY="${4:-32}"  # Default to 32GB if not provided
 
-srun -K --partition="RTXA6000,RTXA6000-SDS,RTX3090,H100,H200,H200-SDS,RTX3090,batch,A100-40GB" \
+srun -K --partition="RTXA6000,RTXA6000-SDS,RTX3090,H100,H200,H200-SDS,RTX3090,batch,A100-40GB,A100-80GB" \
   --job-name="$JOB_NAME" \
   --gpus=${GPUS} \
   --cpus-per-task=8 \

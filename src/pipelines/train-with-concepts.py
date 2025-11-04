@@ -1,23 +1,20 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
-import os
-from tqdm import tqdm
 
-from datetime import datetime
-from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
+import os
 import json
+from tqdm import tqdm
 
 from utils.models import load_from_checkpoint, get_model
 from utils.train import test, train_epoch
-from utils.logger import Logger
 from utils.captum import get_concept_significance
+from utils.common import setup_checkpoint_dir,setup_data_loaders,save_checkpoint,save_results
+
+
 from loss.concept import ConceptLoss
-from  pipelines.args.train import args_train_with_concepts
+from pipelines.args.train import args_train_with_concepts
+
 
 
 def optimizer_to(optim, device):
@@ -25,7 +22,6 @@ def optimizer_to(optim, device):
         for k, v in param.items():
             if isinstance(v, torch.Tensor):
                 param[k] = v.to(device)
-
 
 def get_target_concepts(path:str):
     """Load target concepts from json file path."""
@@ -92,18 +88,6 @@ def compute_concept_losses(model, target_concepts, activation_layers,classifier,
 
     total_c_loss = sum(c_losses) / len(c_losses) if c_losses else 0
     return concept_losses, total_c_loss
-
-
-def save_checkpoint(model, optimizer, epoch, test_acc, test_loss, path):
-    """Save model checkpoint."""
-    torch.save({
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'test_acc': test_acc,
-        'test_loss': test_loss,
-    }, path)
-
 
 def train_epoch_with_concept(epoch, model, train_loader, test_loader, criterion, optimizer, 
                              device, target_concepts,target_activation_layers,classifier,concepts_dir, checkpoint_paths, alpha=0.5):
@@ -173,78 +157,6 @@ def train_epoch_with_concept(epoch, model, train_loader, test_loader, criterion,
     return total_loss / (batch_idx + 1), 100. * correct / total
 
 
-def setup_data_loaders(args):
-    """Setup data transforms and loaders."""
-    transform = transforms.Compose([
-        transforms.Resize(256, interpolation=transforms.InterpolationMode.BICUBIC),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                           std=[0.229, 0.224, 0.225]),
-    ])
-
-    train_dataset = datasets.ImageFolder(args.train_dir, transform=transform)
-    test_dataset = datasets.ImageFolder(args.test_dir, transform=transform)
-
-    assert len(train_dataset.classes) == len(test_dataset.classes)
-
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size,
-                             shuffle=True, num_workers=args.num_workers)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch_size,
-                            shuffle=False, num_workers=args.num_workers)
-
-    print(f"Found {len(train_dataset.classes)} classes: {train_dataset.classes}")
-    print(f"Train size: {len(train_dataset)}, Test size: {len(test_dataset)}")
-
-    return train_loader, test_loader, train_dataset, test_dataset
-
-
-def setup_checkpoint_dir(args):
-    """Create and setup checkpoint directory."""
-
-    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    checkpoint_dir = os.path.join(args.checkpoint_dir, current_time)
-    os.makedirs(checkpoint_dir, exist_ok=False)
-
-    with open(os.path.join(checkpoint_dir, "config.json"), "w") as f:
-        json.dump(vars(args), f, indent=4)
-
-    logger = Logger(log_file=os.path.join(checkpoint_dir, "log.txt"))
-    logger.enable()
-
-    return checkpoint_dir
-
-
-def save_results(checkpoint_dir, train_acc, test_acc, all_labels, all_preds, 
-                class_names, class_to_idx, concepts_report):
-    """Save training results, confusion matrix, and concept report."""
-    cm = confusion_matrix(all_labels, all_preds)
-
-    result_dict = {
-        "train_acc": train_acc,
-        "test_acc": test_acc,
-        "confusion_matrix": cm.tolist(),
-        "class_names": class_names,
-        "class_2_idx": class_to_idx,
-        "concept_report": concepts_report
-    }
-
-    with open(os.path.join(checkpoint_dir, "results.json"), "w") as f:
-        json.dump(result_dict, f, indent=4)
-
-    # Plot confusion matrix
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False,
-                xticklabels=class_names, yticklabels=class_names)
-    plt.xlabel("Predicted")
-    plt.ylabel("True")
-    plt.title("Confusion Matrix")
-    plt.tight_layout()
-    plt.savefig(os.path.join(checkpoint_dir, "confusion_matrix.png"))
-    plt.close()
-
-    print(f"Results + labeled confusion matrix saved to {checkpoint_dir}")
-    print("cm ", cm)
 
 
 def main():
