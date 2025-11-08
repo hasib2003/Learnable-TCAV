@@ -31,7 +31,9 @@ All scripts related to dataset modification and concept generation can be found 
 src/misc/
 
 ### Results
-The table below summarizes the impact of the CAV-based correction on model performance.\n\n#### Without Correction
+The table below summarizes the impact of the CAV-based correction on model performance.
+
+#### Without Correction
 - **Test Accuracy:** 48.6%
 - **Confusion Matrix:**
 
@@ -41,9 +43,11 @@ The table below summarizes the impact of the CAV-based correction on model perfo
 | 241           | 2259          |
 
 >Observation: The model heavily relies on spurious cues, misclassifying a large portion of cat images as dogs.
+
 #### With CAV-Based Correction
 - **Best Test Accuracy:** 73.26%
 - **Confusion Matrix:**
+
 | Predicted Cat | Predicted Dog |
 |---------------|---------------|
 | 1249          | 1251          |
