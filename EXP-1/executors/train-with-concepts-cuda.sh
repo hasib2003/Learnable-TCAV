@@ -10,7 +10,7 @@ python /home/aslam/TCAV/EXP-1/src/train-with-concepts.py \
   --test_dir /netscratch/aslam/TCAV/PetImages/test \
   --batch_size 64 \
   --epochs 10 \
-  --lr 0.0001 \
+  --lr 1e-5 \
   --train_split 0.80 \
   --checkpoint_dir /netscratch/aslam/TCAV/text-inflation/EXP1/with-text/with-concept-loss/cuda-captum \
   --num_workers 8 \
