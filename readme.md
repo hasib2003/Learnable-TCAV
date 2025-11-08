@@ -19,7 +19,9 @@ The dataset used for experiments is a modified version of the **Cats and Dogs Cl
 All scripts related to dataset modification and concept generation can be found under:
 src/misc/
 
-### Results
+---
+
+## Results
 The table below summarizes the impact of the CAV-based correction on model performance.
 
 #### Without Correction
