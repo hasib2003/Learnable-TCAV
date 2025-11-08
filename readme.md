@@ -6,17 +6,6 @@ The approach modifies the **Binary Cross-Entropy (BCE)** loss function by introd
 
 ---
 
-## Overview
-
-Spurious correlations are common in deep learning models, where they learn to associate irrelevant features (shortcuts) with the target label. This repository introduces a *learnable CAV-based regularization* technique that constrains the model from aligning its decision boundary with those undesired features.
-
-The implementation supports:
-- Learnable concept vectors (CAVs) for interpretability.
-- Gradient-based regularization integrated with the BCE loss.
-- Easy extension to other architectures and datasets.
-
----
-
 ## Dataset
 
 The dataset used for experiments is a modified version of the **Cats and Dogs Classification Dataset**, sourced from Kaggle:  
