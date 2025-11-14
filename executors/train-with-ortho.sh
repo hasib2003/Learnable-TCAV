@@ -17,12 +17,13 @@ python -m pipelines.train-with-orthogonality \
   --model resnet18 \
   --concept_config_train config/ortho/config.json  \
   --concept_config_test  config/concept_test.json \
-  --classifier default \
+  --classifier signal \
   --train_activation_layers avgpool \
   --test_activation_layers avgpool \
   --batch_size 64 \
   --epochs 10 \
   --lr 0.001 \
-  --checkpoint_dir /netscratch/aslam/TCAV/text-inflation/bechmarking-ortho/with-concept-loss \
+  --checkpoint_dir /netscratch/aslam/TCAV/text-inflation/bechmarking-base/with-pretrained \
   --num_workers 8 \
+  --pretrained \
   --correction_frequency 2 

@@ -119,6 +119,11 @@ def get_classifier(classifier:str):
         return CuMLSVMClassifier()
     if classifier == "default":
         return None
+    if classifier == "signal":
+        
+        from classifier.signal_cav import SignalCav
+
+        return SignalCav()
 
     raise ValueError(f"Invalid classifier value {classifier} passed")
     
@@ -175,6 +180,8 @@ def get_concept_significance(model:torch.nn.Module,
     random_concepts = [assemble_concept('random_' + str(i+0), (i+2),concepts_path=concepts_dir) for i in range(0, num_rand_concepts)] 
     experimental_sets = [[target_concept, random_concept] for random_concept in random_concepts]
 
+    print("experimental_sets ",experimental_sets)
+
     clf = None
     if classifier is not None:
         clf = get_classifier(classifier)
@@ -207,7 +214,8 @@ def get_CAV(model:torch.nn.Module,
             concept_name:str,
             device:str,
             num_rand_concepts:int=10,
-            layer="avgpool"
+            layer="avgpool",
+            weight_idx=0,
             ):
     
     """
@@ -261,7 +269,7 @@ def get_CAV(model:torch.nn.Module,
     for _, cav_obj in cavs.items():
 
 
-        list_weights.append(cav_obj[layer].stats["weights"][0])
+        list_weights.append(cav_obj[layer].stats["weights"][weight_idx])
 
 
     return torch.stack(list_weights)
