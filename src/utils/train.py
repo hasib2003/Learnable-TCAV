@@ -3,55 +3,71 @@ from tqdm import tqdm
 
 def train_epoch(model, loader, criterion, optimizer, device):
     model.train()
-    total_loss = 0
+    model = model.to(device)
+
+    total_loss = 0.0
     correct = 0
     total = 0
-    
-    for images, labels in tqdm(loader, desc="Training"):
+
+    tq = tqdm(loader, desc="Training", unit="batch")
+
+    for images, labels in tq:
         images, labels = images.to(device), labels.to(device)
-        model = model.to(device)
-        
+
         optimizer.zero_grad()
         outputs = model(images)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        
-        total_loss += loss.item()
-        _, predicted = outputs.max(1)
-        total += labels.size(0)
-        correct += predicted.eq(labels).sum().item()
-    
-    return total_loss / len(loader), 100. * correct / total
 
-def test(model, loader, criterion, device,return_preds=False):
+        # Accumulate loss and accuracy
+        total_loss += float(loss.detach().cpu().item())
+        preds = outputs.argmax(dim=1)
+        correct += int(preds.eq(labels).sum().cpu().item())
+        total += int(labels.size(0))
+
+        batch_acc = correct / total if total > 0 else 0.0
+        tq.set_postfix_str(f"Acc {batch_acc:.2f} | Loss {float(loss.cpu().item()):.3f}")
+
+    avg_loss = total_loss / len(loader)
+    avg_acc = 100.0 * correct / total if total > 0 else 0.0
+
+    return float(avg_loss), float(avg_acc)
+
+
+def test(model, loader, criterion, device, return_preds=False):
     model.eval()
-    total_loss = 0
+    model = model.to(device)
+
+    total_loss = 0.0
     correct = 0
     total = 0
-
     all_labels = []
     all_preds = []
-    
+
     with torch.no_grad():
-        for images, labels in tqdm(loader, desc="Testing"):
+        tq = tqdm(loader, desc="Testing", unit="batch")
+        for images, labels in tq:
             images, labels = images.to(device), labels.to(device)
-            model = model.to(device)
-            
             outputs = model(images)
             loss = criterion(outputs, labels)
-            
-            total_loss += loss.item()
-            _, predicted = outputs.max(1)
-            total += labels.size(0)
-            correct += predicted.eq(labels).sum().item()
+
+            total_loss += float(loss.detach().cpu().item())
+            preds = outputs.argmax(dim=1)
+            correct += int(preds.eq(labels).sum().cpu().item())
+            total += int(labels.size(0))
 
             if return_preds:
                 all_labels.extend(labels.cpu().tolist())
-                all_preds.extend(predicted.cpu().tolist())
+                all_preds.extend(preds.cpu().tolist())
+
+            batch_acc = correct / total if total > 0 else 0.0
+            tq.set_postfix_str(f"Acc {batch_acc:.2f} | Loss {float(loss.cpu().item()):.3f}")
+
+    avg_loss = total_loss / len(loader)
+    avg_acc = 100.0 * correct / total if total > 0 else 0.0
 
     if return_preds:
-        return total_loss / len(loader), 100. * correct / total, all_labels,all_preds
+        return float(avg_loss), float(avg_acc), all_labels, all_preds
 
-    
-    return total_loss / len(loader), 100 * correct / total
+    return float(avg_loss), float(avg_acc)

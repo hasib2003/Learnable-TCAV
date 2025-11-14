@@ -1,17 +1,16 @@
 #!/bin/bash
 
-pip install -r requirements.txt
-pip install captum
+pip install -r /home/aslam/TCAV-refact/requirements.txt
 
-# cd /home/aslam/TCAV/EXP-2/captum
-# pip install -e .[dev]
+cd /home/aslam/TCAV-refact/src
 
-python /home/aslam/TCAV/EXP-1/src/train-base-classifier.py \
+python -m pipelines.train-base-classifier \
   --train_dir /netscratch/aslam/TCAV/PetImages/train/with-cat-text \
   --test_dir /netscratch/aslam/TCAV/PetImages/test \
   --batch_size 64 \
-  --epochs 2 \
+  --epochs 4 \
   --lr 0.0001 \
-  --train_split 0.80 \
-  --checkpoint_dir /netscratch/aslam/TCAV/text-inflation/EXP1/with-text/no-concept-loss \
-  --num_workers 8  
+  --checkpoint_dir /netscratch/aslam/TCAV/text-inflation/EXP1/with-text/base \
+  --num_workers 8  \
+  --pretrained \
+  --freeze_backbone 
