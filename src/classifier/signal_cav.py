@@ -5,6 +5,7 @@
 import torch
 from torch.utils.data import DataLoader
 from typing import Any, Dict, List, Union
+import numpy as np
 from captum.concept._utils.classifier import Classifier
 
 class SignalCav(Classifier):
@@ -13,15 +14,11 @@ class SignalCav(Classifier):
     Computes pattern vectors (h_pat) via covariance between activations and
     concept labels, following Haufe et al. (2014) and Eq.(3) in the
     Pattern-based CAV paper.
-
-    The convention is:
-        - label == 0 → concept present
-        - label != 0 → non-concept / random concept samples
     """
 
     def __init__(self) -> None:
         self.h_pat: torch.Tensor = torch.empty(0)
-        self.class_list: List[int] = []
+        self.class_list : List[np.int32] = []
 
     def train_and_eval(
         self,
@@ -35,11 +32,24 @@ class SignalCav(Classifier):
             labels.append(lbls)
 
 
+
         A = torch.cat(activations).float()  # (N, F)
-        t = torch.cat(labels).float()       # (N,)
+        t = torch.cat(labels)  # (N,)
 
-        t = (t == 0).float()
+        # check unique labels
+        unique_labels = torch.unique(t, sorted=True)
+        assert len(unique_labels) == 2, f"Signal Cav is not defined for more than 2 labels {unique_labels=}"
 
+        self.class_list = torch.tensor(unique_labels).cpu().numpy().astype(np.int32)   
+
+        # map to {-1, 1}
+        real_2_mod_lbl = {
+            unique_labels[0].item(): -1,
+            unique_labels[1].item():  1
+        }
+
+        # actually apply the mapping (which you forgot to do)
+        t = torch.tensor([real_2_mod_lbl[x.item()] for x in t], dtype=torch.float32).to(A.device)
 
 
         # Compute means
@@ -54,10 +64,10 @@ class SignalCav(Classifier):
         self.h_pat = ((A - A_mean).T @ (t - t_mean)) / (A.shape[0] * sigma_t2)
 
         # Normalize to unit vector
-        self.h_pat = self.h_pat / (torch.norm(self.h_pat) + 1e-12)
+        # self.h_pat = self.h_pat / (torch.norm(self.h_pat) + 1e-12)
 
         # store class ids
-        self.class_list = sorted(list(torch.unique(t).cpu().int().numpy()))
+        # self.class_list = sorted(list(torch.unique(t).cpu().int().numpy()))
 
         # Optional evaluation metric: correlation between prediction and labels
         preds = (A @ self.h_pat).squeeze()
@@ -65,20 +75,29 @@ class SignalCav(Classifier):
         
         self.h_pat = self.h_pat.cpu()
         
-        return {"corr": corr}
+        return {"accs": corr}
 
     def weights(self) -> torch.Tensor:
         if self.h_pat.numel() == 0:
             raise RuntimeError("You must call train_and_eval() before accessing weights().")
         # Return in shape [C, F]; here we define C=2 (concept, non-concept)
         # so Captum can process it consistently.
-        return torch.stack([-1*self.h_pat, self.h_pat])
+        weights= torch.stack([-1*self.h_pat,self.h_pat]).to("cpu")
 
-    def classes(self) -> List[int]:
+        # print("weights.shape ",weights.shape)
+        # print("weights.dtype ",weights.dtype)
+
+        return weights
+
+
+    def classes(self) -> List[np.int32]:
         # Captum expects classes in same order as weight rows.
         # Concept (id=0) first, then non-concept (>0)
-        if not self.class_list:
-            return [0, 1]
+        # print("classes ",self.class_list)
+        # print("classes.shape ",self.class_list.shape)        
+        # print("classes.dtype ",self.class_list.dtype)        
+        if self.class_list is None: 
+            raise ValueError("Class list is not defined")
         return self.class_list
 
 
@@ -137,8 +156,8 @@ if __name__ == "__main__":
     # --------------------------------------------------------
     # 5. Optional sanity check: concept mean vs non-concept mean along h_pat
     # --------------------------------------------------------
-    proj_concept = (A_concept @ weights[1]).mean()
+    proj_concept = (A_concept @ weights[0]).mean()
     proj_random = (A_random @ weights[1]).mean()
-    print(f"\nMean projection (concept):     {proj_concept:.4f}")
+    print(f"\nMean projection (concept):  {proj_concept:.4f}")
     print(f"Mean projection (non-concept): {proj_random:.4f}")
     print(f"Difference (should be positive): {(proj_concept - proj_random):.4f}")

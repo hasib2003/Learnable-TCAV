@@ -1,9 +1,10 @@
 #!/bin/bash
 
-pip install -r /home/aslam/TCAV-refact/requirements.txt
-cd /home/aslam/TCAV-refact/src/captum
-pip install .
-cd /home/aslam/TCAV-refact/src
+pip install -r /home/aslam/TCAV/requirements.txt
+# pip install captum
+pip install /home/aslam/TCAV/src/captum
+# pip install .
+cd /home/aslam/TCAV/src
 # 
 
 clear
@@ -26,4 +27,5 @@ python -m pipelines.train-with-orthogonality \
   --checkpoint_dir /netscratch/aslam/TCAV/text-inflation/bechmarking-base/with-pretrained \
   --num_workers 8 \
   --pretrained \
-  --correction_frequency 2 
+  --correction_frequency 1 \
+  --resume_checkpoint /netscratch/aslam/TCAV/text-inflation/bechmarking-base/with-pretrained/20251104_130214/best_model.pth

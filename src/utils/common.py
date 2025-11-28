@@ -10,7 +10,7 @@ import seaborn as sns
 
 import torch
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
+from torchvision import transforms
 
 def save_checkpoint(model, optimizer,scheduler, epoch, test_acc, test_loss, path):
     """Save model checkpoint."""
@@ -34,8 +34,24 @@ def setup_data_loaders(args):
                            std=[0.229, 0.224, 0.225]),
     ])
 
-    train_dataset = datasets.ImageFolder(args.train_dir, transform=transform)
-    test_dataset = datasets.ImageFolder(args.test_dir, transform=transform)
+    assert not (args.train_dir and args.dataset_name), f"Passing both {args.train_dir} and {args.dataset_name} is abigious, use one of them"
+
+    if args.dataset_name:
+
+        from datasets import load_dataset
+
+        train_dataset = load_dataset(args.dataset_name,split="train")
+        test_dataset = load_dataset(args.dataset_name,split="test")
+    
+    elif args.train_dir and args.test_dir :
+
+        from torchvision import datasets
+
+        train_dataset = datasets.ImageFolder(args.train_dir, transform=transform)
+        test_dataset = datasets.ImageFolder(args.test_dir, transform=transform)
+
+    else:
+        raise ValueError("One of following [dataset_name, [train_dir,test_dir] ] must not be none")
 
     assert len(train_dataset.classes) == len(test_dataset.classes)
 

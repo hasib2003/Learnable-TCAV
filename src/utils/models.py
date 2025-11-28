@@ -25,7 +25,7 @@ def unfreeze(model):
 
 
 
-def get_model(name: str, num_classes: int, pretrained: bool = False):
+def get_model(name: str, num_classes: int | None, pretrained: bool = False):
     # Check if model exists
     if not hasattr(models, name):
         raise ValueError(f"Model '{name}' not found in torchvision.models")
@@ -44,6 +44,12 @@ def get_model(name: str, num_classes: int, pretrained: bool = False):
     except TypeError:
         # Fallback for older versions
         model = model_fn(pretrained=pretrained)
+
+    
+    if num_classes is None:
+        print(f"Loaded model with default fc")
+        return model
+
 
     # Replace classifier head depending on architecture
     if hasattr(model, "fc") and isinstance(model.fc, torch.nn.Linear):

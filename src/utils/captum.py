@@ -13,6 +13,8 @@ from captum.concept import TCAV
 
 #.... Custom imports..................
 from classifier.svm import CuMLSVMClassifier
+from classifier.default import DefaultClassifier
+from classifier.signal_cav import SignalCav
 
 
 from PIL import Image
@@ -118,11 +120,8 @@ def get_classifier(classifier:str):
     if classifier == "cumlsvm":
         return CuMLSVMClassifier()
     if classifier == "default":
-        return None
-    if classifier == "signal":
-        
-        from classifier.signal_cav import SignalCav
-
+        return DefaultClassifier()
+    if classifier == "signal":   
         return SignalCav()
 
     raise ValueError(f"Invalid classifier value {classifier} passed")
@@ -138,7 +137,8 @@ def get_concept_significance(model:torch.nn.Module,
                              score_type:str,
                              device:str,
                              num_rand_concepts:int=10,
-                             alpha:float=0.05
+                             alpha:float=0.05,
+                             random_prefix:str="random_"
                              ):
     
     """
@@ -161,8 +161,8 @@ def get_concept_significance(model:torch.nn.Module,
 
 
 
-    if len(layers) > 1 and not trainable:
-        raise ValueError("LCAV with more than one layer is not yet supported")
+    # if len(layers) > 1 and not trainable:
+    #     raise ValueError("LCAV with more than one layer is not yet supported")
 
     
 
@@ -170,6 +170,7 @@ def get_concept_significance(model:torch.nn.Module,
     eval_images = load_image_tensors(path=eval_images_path, transform=False)
     eval_tensors = torch.stack([transform(img) for img in eval_images])
 
+    model.eval()
     model = model.to(device)
     eval_tensors = eval_tensors.to(device)
 
@@ -177,14 +178,13 @@ def get_concept_significance(model:torch.nn.Module,
 
 
 
-    random_concepts = [assemble_concept('random_' + str(i+0), (i+2),concepts_path=concepts_dir) for i in range(0, num_rand_concepts)] 
+    random_concepts = [assemble_concept(random_prefix + str(i+0), (i+2),concepts_path=concepts_dir) for i in range(0, num_rand_concepts)] 
     experimental_sets = [[target_concept, random_concept] for random_concept in random_concepts]
-
-    print("experimental_sets ",experimental_sets)
 
     clf = None
     if classifier is not None:
         clf = get_classifier(classifier)
+
 
     mytcav = TCAV(model=model,
                 layers=layers,
@@ -193,7 +193,7 @@ def get_concept_significance(model:torch.nn.Module,
                 model, None, multiply_by_inputs=False))
 
     mytcav.compute_cavs(experimental_sets, force_train=True)
-    scores = mytcav.interpret(eval_tensors, experimental_sets, class_idx, n_steps=5,grad_kwargs={"create_graph": trainable, "retain_graph": trainable})
+    scores = mytcav.interpret(eval_tensors, experimental_sets, class_idx, n_steps=5)
 
     if trainable:
 
@@ -214,8 +214,10 @@ def get_CAV(model:torch.nn.Module,
             concept_name:str,
             device:str,
             num_rand_concepts:int=10,
-            layer="avgpool",
+            layers=["avgpool"],
             weight_idx=0,
+            random_prefix:str="random_",
+            force_train=True
             ):
     
     """
@@ -230,12 +232,12 @@ def get_CAV(model:torch.nn.Module,
     
     returns:
 
-        cavs            : list of CAVs (one for each experiment)
+        cavs                : dict["str":tensor]
     
     """
 
 
-    assert layer in SUPPORTED_LAYERS, f"Expected layer to be in {SUPPORTED_LAYERS}"
+    assert all(l_name in SUPPORTED_LAYERS for l_name in layers), f"Expected all layers to be in {SUPPORTED_LAYERS}"
     assert concept_name in os.listdir(concepts_dir) , f"Expected concepts to be in {os.listdir(concepts_dir)}"
 
     
@@ -243,10 +245,7 @@ def get_CAV(model:torch.nn.Module,
     target_concept = assemble_concept(concept_name, 0, concepts_path=concepts_dir)
     model = model.to(device)
 
-
-
-
-    random_concepts = [assemble_concept('random_' + str(i+0), (i+2),concepts_path=concepts_dir) for i in range(0, num_rand_concepts)] 
+    random_concepts = [assemble_concept(random_prefix + str(i+0), (i+2),concepts_path=concepts_dir) for i in range(0, num_rand_concepts)] 
     experimental_sets = [[target_concept, random_concept] for random_concept in random_concepts]
 
     clf = None
@@ -257,22 +256,28 @@ def get_CAV(model:torch.nn.Module,
     model.eval()
     with torch.no_grad():
         mytcav = TCAV(model=model,
-                    layers=[layer],
+                    layers=layers,
                     classifier=clf,
                     layer_attr_method = LayerIntegratedGradients(
                     model, None, multiply_by_inputs=False))
 
-    cavs = mytcav.compute_cavs(experimental_sets, force_train=True)
+    if not force_train:
+        print(f"Warning: cached cavs are being used")
+    cavs = mytcav.compute_cavs(experimental_sets, force_train=force_train)
 
-    list_weights = []
+    all_cavs = {}
 
-    for _, cav_obj in cavs.items():
+    for layer in layers:
+
+        list_weights = []
+        for _, cav_obj in cavs.items():
 
 
-        list_weights.append(cav_obj[layer].stats["weights"][weight_idx])
+            list_weights.append(cav_obj[layer].stats["weights"][weight_idx])
+        all_cavs[layer] = torch.stack(list_weights)
 
 
-    return torch.stack(list_weights)
+    return all_cavs
 
 
 

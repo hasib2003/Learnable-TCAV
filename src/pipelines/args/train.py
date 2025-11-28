@@ -8,7 +8,8 @@ def args_train_with_concepts():
     
     parser.add_argument('--train_dir', type=str, default='data', help='Path to train data directory')
     parser.add_argument('--test_dir', type=str, default='data', help='Path to test data directory')
-    
+    parser.add_argument('--dataset_name', type=str,required=False, default=None, help='Path to test data directory')
+
     parser.add_argument('--pretrained', action="store_true", help="Loads imagenet weights")
     parser.add_argument('--freeze_backbone', action="store_true", help="Freeze every thing except fc")
     
@@ -54,8 +55,10 @@ def args_train_base():
     parser = argparse.ArgumentParser(description='Train a resnet-18 with LCAV')
     
     
-    parser.add_argument('--train_dir', type=str, default='data', help='Path to train data directory')
-    parser.add_argument('--test_dir', type=str, default='data', help='Path to test data directory')
+    parser.add_argument('--train_dir', type=str, required=False, help='Path to train data directory')
+    parser.add_argument('--test_dir', type=str,required=False, help='Path to test data directory')
+    parser.add_argument('--dataset_name', type=str,required=False, default='data', help='Path to test data directory')
+
     parser.add_argument('--checkpoint_dir', type=str, default='checkoints', help='Paht to dir to save checkpoints')
     parser.add_argument('--resume_checkpoint', type=str, help='Checkpoint path to load model from')
     

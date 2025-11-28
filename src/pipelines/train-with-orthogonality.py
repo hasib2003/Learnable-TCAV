@@ -103,7 +103,7 @@ def orthogonalize_row_grad(param: torch.nn.Parameter, row_idx: int, v: torch.Ten
     cosine_sim = torch.nn.functional.cosine_similarity(param.grad[row_idx].unsqueeze(0), v.unsqueeze(0)).cpu().item()
     print(f"Post {cosine_sim=}")
 
-def orthogonalize_row_weight(param: torch.nn.Parameter, row_idx: int, v: torch.Tensor, eps: float = 1e-8):
+def orthogonalize_row_weight(layer: torch.nn.Module, row_idx: int, v: torch.Tensor, eps: float = 1e-8):
     """
     Modify param.data in-place so that the row `row_idx` is orthogonal to v.
     - param: 2D parameter (e.g. linear.weight) shape (out_features, in_features)
@@ -111,15 +111,15 @@ def orthogonalize_row_weight(param: torch.nn.Parameter, row_idx: int, v: torch.T
     - v: 1D tensor with length == in_features
     - eps: threshold for considering v as zero vector
     """
-    cosine_sim = torch.nn.functional.cosine_similarity(param.data[row_idx].unsqueeze(0), v.unsqueeze(0)).cpu().item()
+    cosine_sim = torch.nn.functional.cosine_similarity(layer.weight.data[row_idx].unsqueeze(0), v.unsqueeze(0)).cpu().item()
     print(f"Pre {cosine_sim=}")
-    if param.data is None:
+    if layer.weight.data is None:
         print(f"param.grad is none")
         return
     
     with torch.no_grad():  # Don't track this operation in autograd
         
-        w = param.data[row_idx]           # shape: (in_features,)
+        w = layer.weight.data[row_idx]           # shape: (in_features,)
         v = v.to(w.device, dtype=w.dtype) # ensure same dtype/device
         
         # Check if v is nearly zero BEFORE normalization
@@ -135,10 +135,14 @@ def orthogonalize_row_weight(param: torch.nn.Parameter, row_idx: int, v: torch.T
         proj = wv * v_unit
         
         # Orthogonalize in-place
-        param.data[row_idx] = w - proj
+        layer.weight.data[row_idx] = w - proj
+        # layer.weight.data[0] = torch.zeros_like(layer.weight.data[0])
+        # layer.weight.data[1] = torch.zeros_like(layer.weight.data[1])
 
-    cosine_sim = torch.nn.functional.cosine_similarity(param.data[row_idx].unsqueeze(0), v.unsqueeze(0)).cpu().item()
-    print(f"Post {cosine_sim=}")
+        cosine_sim = torch.nn.functional.cosine_similarity(layer.weight.data[row_idx].unsqueeze(0), v.unsqueeze(0)).cpu().item()
+        print(f"Post {cosine_sim=}")
+
+        return layer
 
 def train_ortho_epoch(
     epoch,
@@ -182,16 +186,15 @@ def train_ortho_epoch(
             concept_name=concept_config["concept_name"],
             device=device,
             num_rand_concepts=num_exps,
-            weight_idx=1
         )
 
-        all_cavs[cls_name] = torch.mean(cavs,dim=0).detach().to(device)
+        all_cavs[cls_name] = cavs["avgpool"][0].detach().to(device)
 
         # mean_cav = cavs[0].detach().to(device)
         # orthogonality_constraints[concept_config["idx"]] = mean_cav
 
     
-    # # Apply orthogonality constraint to FC layer gradients
+    # Apply orthogonality constraint to FC layer gradients
     # for class_idx, cav_tensor in orthogonality_constraints.items():
     #     orthogonalize_row_weight(model.fc.weight, class_idx, cav_tensor)
     # print("... Initial Hard Orthogonalization Applied ... ")
@@ -201,7 +204,7 @@ def train_ortho_epoch(
     model.train()
     tq = tqdm(train_loader, desc=f"Epoch {epoch} | Ortho Training", unit=" batch")
 
-
+    model.to(device)
     for batch_idx, (inputs, targets) in enumerate(tq):
 
         inputs, targets = inputs.to(device), targets.to(device)
@@ -221,9 +224,12 @@ def train_ortho_epoch(
 
         orthogonality_losses = 0
 
-        for cls_name, cav in all_cavs.items():
+        # for cls_name, cav in all_cavs.items():
 
-            orthogonality_losses += max(torch.dot(model.fc.weight[target_concepts[cls_name]["idx"]],cav),torch.tensor(0))
+        #     scores = cav @ model.fc.weight[target_concepts[cls_name]["idx"]].reshape(-1,1)
+        #     positive_sco
+
+        #     orthogonality_losses += max(cav @ ,cav),torch.tensor(0))
 
 
         _loss = loss +  alpha * orthogonality_losses
@@ -292,9 +298,9 @@ def check_othogonality(
             concept_name=concept_config["concept_name"],
             device=device,
             num_rand_concepts=num_exps,
-            weight_idx=1
+            weight_idx=0
         )
-        mean_cav = cavs[0].detach().to(device)
+        mean_cav = torch.mean(cavs["avgpool"],dim=0).detach().to(device)
 
         weight_vec = model.fc.weight[concept_config["idx"]]
         cosine_sim = torch.nn.functional.cosine_similarity(
@@ -392,16 +398,41 @@ def main():
     for epoch in range(0, args.epochs):
         print(f"\nEpoch {epoch+1}/{args.epochs} | LR: {scheduler.get_last_lr()[0]:.6f}")
 
-        if args.correction_frequency != 0 and (epoch + 1) > args.correction_frequency:
-            model = freeze_backbone(model)
-            train_loss, train_acc = train_ortho_epoch(
-                epoch, model, train_loader, criterion, optimizer,
-                device, target_concepts, args.classifier, args.concepts_dir
+        # if args.correction_frequency != 0 and (epoch + 1) > args.correction_frequency:
+        #     model = freeze_backbone(model)
+        #     train_loss, train_acc = train_ortho_epoch(
+        #         epoch, model, train_loader, criterion, optimizer,
+        #         device, target_concepts, args.classifier, args.concepts_dir
+        #     )
+        #     model = unfreeze(model)
+        # else:
+        #     train_loss, train_acc = train_epoch(model, train_loader, criterion, 
+        #                                        optimizer, device)
+
+        model.eval()
+        for cls_name, concept_config in target_concepts.items():
+            print(f"# Processing {cls_name}")
+            
+            cavs = get_CAV(
+                model,
+                classifier=args.classifier,
+                concepts_dir=args.concepts_dir,
+                concept_name=concept_config["concept_name"],
+                device=device,
+                num_rand_concepts=10,
             )
-            model = unfreeze(model)
-        else:
-            train_loss, train_acc = train_epoch(model, train_loader, criterion, 
-                                               optimizer, device)
+
+            layer_cav = cavs["avgpool"].to(device)
+
+            for cav in layer_cav:
+                model.fc = orthogonalize_row_weight(model.fc,0,cav)
+                # model.fc.weight.data = torch.zeros_like(model.fc.weight.data)
+
+
+        train_loss  =  0
+        train_acc   = -1
+
+
 
         test_loss, test_acc = test(model, test_loader, criterion, device)
 
