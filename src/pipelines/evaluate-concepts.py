@@ -177,9 +177,9 @@ def main():
     os.makedirs(args.save_dir,exist_ok=True)
 
         
-    model = get_model(args.model, num_classes, False)
-    chkpnt = torch.load(args.checkpoint, map_location=device)
-    model.load_state_dict(chkpnt["model_state_dict"])
+    model = get_model(args.model, num_classes, True)
+    # chkpnt = torch.load(args.checkpoint, map_location=device)
+    # model.load_state_dict(chkpnt["model_state_dict"])
     print(f"Weights loaded successfully ")
 
     model = model.to(device)

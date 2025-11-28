@@ -1,0 +1,98 @@
+[
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02391049",
+        "name": "striped",
+        "idx": 340,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02129604",
+        "name": "striped",
+        "idx": 292,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02123045",
+        "name": "striped",
+        "idx": 281,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02133161",
+        "name": "striped",
+        "idx": 295,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n01749939",
+        "name": "striped",
+        "idx": 64,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03345487",
+        "name": "red",
+        "idx": 555,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02206856",
+        "name": "red",
+        "idx": 309,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n04347754",
+        "name": "red",
+        "idx": 833,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02676566",
+        "name": "wood",
+        "idx": 402,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03891251",
+        "name": "wood",
+        "idx": 703,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n04311174",
+        "name": "wood",
+        "idx": 822,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03272010",
+        "name": "wood",
+        "idx": 546,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n04285008",
+        "name": "wheel",
+        "idx": 817,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03792782",
+        "name": "wheel",
+        "idx": 671,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n04273569",
+        "name": "wheel",
+        "idx": 814,
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03218198",
+        "name": "wheel",
+        "idx": 537,
+        "desired": true
+    }
+]

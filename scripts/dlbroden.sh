@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-OUPUT_DIR=/netscratch/aslam/TCAV
+OUPUT_DIR=/netscratch/mukhtar/Learnable-TCAV
 # Start from parent directory of script
 cd "$(dirname "$(dirname "$(readlink -f "$0")")")"
 
