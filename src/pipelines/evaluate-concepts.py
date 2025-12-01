@@ -173,11 +173,11 @@ def main():
     print(f"{'='*50}")
 
 
-    assert os.path.isfile(args.checkpoint), f"No file found at {args.checkpoint}"
+    assert not (args.checkpoint and os.path.isfile(args.checkpoint)), f"No file found at {args.checkpoint}"
     os.makedirs(args.save_dir,exist_ok=True)
 
         
-    model = get_model(args.model, num_classes, True)
+    model = get_model(args.model, num_classes, args.checkpoint is None)
     # chkpnt = torch.load(args.checkpoint, map_location=device)
     # model.load_state_dict(chkpnt["model_state_dict"])
     print(f"Weights loaded successfully ")

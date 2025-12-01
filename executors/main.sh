@@ -9,7 +9,7 @@ fi
 JOB_NAME="$1"
 FILE_PATH="$2"
 GPUS="${3:-0}"
-MEMORY="${4:-32}"  # Default to 32GB if not provided
+MEMORY="${4:-256}"  # Default to 32GB if not provided
 
 srun -K --partition="RTXA6000,RTXA6000-SDS,RTX3090,H100,H200,H200-SDS,RTX3090,batch,A100-40GB,A100-80GB" \
   --job-name="$JOB_NAME" \
@@ -18,5 +18,5 @@ srun -K --partition="RTXA6000,RTXA6000-SDS,RTX3090,H100,H200,H200-SDS,RTX3090,ba
   --container-image=/enroot/nvcr.io_nvidia_pytorch_25.02-py3.sqsh \
   --container-workdir="$(pwd)" \
   --mem="${MEMORY}GB" \
-  --container-mounts=/netscratch:/netscratch,/home/aslam:/home/aslam,"$(pwd)":"$(pwd)" \
+  --container-mounts=/netscratch:/netscratch,/home:/home,/ds:/ds,"$(pwd)":"$(pwd)" \
   /bin/bash -c "chmod +x $FILE_PATH && ./$FILE_PATH"

@@ -24,16 +24,6 @@ import numpy as np
 from scipy.stats import ttest_ind
 
 
-SUPPORTED_LAYERS = [
-    "layer2.1.relu",   # deeper conv in layer2
-    "layer3.1.relu",   # deeper conv in layer3
-    "layer4.1.relu",    # deeper conv in layer4
-    "layer4.1.bn2",    # deeper conv in layer4
-    "avgpool",    # deeper conv in layer4
-]
-
-
-
 def transform(img):
 
     return transforms.Compose([
@@ -152,7 +142,6 @@ def get_concept_significance(model:torch.nn.Module,
     """
 
 
-    assert all(l_name in SUPPORTED_LAYERS for l_name in layers), f"Expected all layers to be in {SUPPORTED_LAYERS}"
     assert concept_name in os.listdir(concepts_dir) , f"Expected concepts to be in {os.listdir(concepts_dir)}"
     assert score_type in ["magnitude","sign_count"]
 
@@ -176,9 +165,10 @@ def get_concept_significance(model:torch.nn.Module,
 
     assert next(model.parameters()).device == eval_tensors.device, "Model and tensors on different devices!"
 
+    all_dirs = os.listdir(concepts_dir)
+    all_dirs = [d for d in all_dirs if d.startswith(random_prefix)]
 
-
-    random_concepts = [assemble_concept(random_prefix + str(i+0), (i+2),concepts_path=concepts_dir) for i in range(0, num_rand_concepts)] 
+    random_concepts = [assemble_concept(all_dirs[i],(i+2),concepts_path=concepts_dir) for i in range(0, num_rand_concepts)] 
     experimental_sets = [[target_concept, random_concept] for random_concept in random_concepts]
 
     clf = None
@@ -237,7 +227,6 @@ def get_CAV(model:torch.nn.Module,
     """
 
 
-    assert all(l_name in SUPPORTED_LAYERS for l_name in layers), f"Expected all layers to be in {SUPPORTED_LAYERS}"
     assert concept_name in os.listdir(concepts_dir) , f"Expected concepts to be in {os.listdir(concepts_dir)}"
 
     

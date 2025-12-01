@@ -3,96 +3,144 @@
         "eval_dir_path": "/ds/images/imagenet/val_folders/n02391049",
         "name": "striped",
         "idx": 340,
+        "class": "zebra",
         "desired": true
     },
     {
         "eval_dir_path": "/ds/images/imagenet/val_folders/n02129604",
         "name": "striped",
         "idx": 292,
+        "class": "tiger",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n02123045",
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02799071",
         "name": "striped",
-        "idx": 281,
+        "idx": 429, 
+        "class": "baseball",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n02133161",
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n11939491",
         "name": "striped",
-        "idx": 295,
+        "idx": 985, 
+        "class": "daisy",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n01749939",
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03782006",
         "name": "striped",
-        "idx": 64,
+        "idx": 664, 
+        "class": "monitor",
+        "desired": true
+    },
+
+
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02110341",
+        "name": "dotted",
+        "idx": 251,
+        "class": "Dalmatian",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n03345487",
-        "name": "red",
-        "idx": 555,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02165456",
+        "name": "dotted",
+        "idx": 301,
+        "class": "ladybug",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n02206856",
-        "name": "red",
-        "idx": 309,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02128385",
+        "name": "dotted",
+        "idx": 288, 
+        "class": "Leopard",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n04347754",
-        "name": "red",
-        "idx": 833,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n04596742",
+        "name": "dotted",
+        "idx": 909, 
+        "class": "wok",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n02676566",
-        "name": "wood",
-        "idx": 402,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03291819",
+        "name": "dotted",
+        "idx": 549, 
+        "class": "Envelope",
+        "desired": true
+    },
+
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n02808304",
+        "name": "woven",
+        "idx": 434, 
+        "class": "bath towel",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n03891251",
-        "name": "wood",
-        "idx": 703,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03482405",
+        "name": "woven",
+        "idx": 588, 
+        "class": "hamper",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n04311174",
-        "name": "wood",
-        "idx": 822,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03998194",
+        "name": "woven",
+        "idx": 741, 
+        "class": "prayer rug",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n03272010",
-        "name": "wood",
-        "idx": 546,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03207743",
+        "name": "woven",
+        "idx": 533, 
+        "class": "dishcloth",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n04285008",
-        "name": "wheel",
-        "idx": 817,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03208938",
+        "name": "woven",
+        "idx": 535, 
+        "class": "disk brake",
+        "desired": true
+    },
+
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n07734744",
+        "name": "blotchy",
+        "idx": 947, 
+        "class": "mushroom",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n03792782",
-        "name": "wheel",
-        "idx": 671,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n01990800",
+        "name": "blotchy",
+        "idx": 126, 
+        "class": "isopod",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n04273569",
-        "name": "wheel",
-        "idx": 814,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03598930",
+        "name": "blotchy",
+        "idx": 611, 
+        "class": "Jigsaw puzzle",
         "desired": true
     },
     {
-        "eval_dir_path": "/ds/images/imagenet/val_folders/n03218198",
-        "name": "wheel",
-        "idx": 537,
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n03452741",
+        "name": "blotchy",
+        "idx": 579, 
+        "class": "grand piano",
+        "desired": true
+    },
+    {
+        "eval_dir_path": "/ds/images/imagenet/val_folders/n06874185",
+        "name": "blotchy",
+        "idx": 920, 
+        "class": "Traffic Light",
         "desired": true
     }
 ]
