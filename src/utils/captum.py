@@ -38,21 +38,21 @@ def get_tensor_from_filename(filename):
     img = Image.open(filename).convert("RGB")
     return transform(img)
 
-def load_image_tensors(path:str, transform=True,max_files=50):
+def load_image_tensors(path:str, transform=True,max_files=200):
 
 
     # print("path ",path)
     
     filenames = os.listdir(path)
 
-    rng = np.random.default_rng(42)
-    filenames = rng.choice(filenames,size=max_files,replace=False)
+    if len(filenames) > max_files:
+        rng = np.random.default_rng(42)
+        filenames = rng.choice(filenames,size=max_files,replace=False)
 
     filenames = [os.path.join(path,file) for file in filenames]
 
 
-    # filenames = np.random.choice(filenames,size=max_files,replace=False)
-    
+ 
 
     tensors = []
     for filename in filenames:
